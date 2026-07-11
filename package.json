@@ -1,6 +1,6 @@
 {
   "name": "@mango-iiif/iiif-search-client",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Zero-dependency TypeScript client for IIIF Content Search API 1.0 and 2.0",
   "license": "MIT",
   "type": "module",
