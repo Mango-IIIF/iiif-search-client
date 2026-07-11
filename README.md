@@ -56,3 +56,11 @@ npm pack --dry-run
 ```
 
 `npm run dev` serves [`demo/index.html`](demo/index.html) with hot reloading and imports the client directly from `src`. The packaged library remains runtime-dependency-free.
+
+## Publishing
+
+1. Update `package.json` to the release version and merge the change.
+2. Create and publish a GitHub Release with a matching `vX.Y.Z` tag.
+3. The release workflow builds and publishes the package to npm with provenance.
+
+The repository must have an npm automation token configured as the `NPM_TOKEN` GitHub Actions secret. Prerelease GitHub Releases are not published.
