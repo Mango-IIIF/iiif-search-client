@@ -1,0 +1,41 @@
+{
+  "name": "@mango-iiif/iiif-search-client",
+  "version": "0.1.0",
+  "description": "Zero-dependency TypeScript client for IIIF Content Search API 1.0 and 2.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "sideEffects": false,
+  "engines": { "node": ">=18" },
+  "publishConfig": { "access": "public", "provenance": true },
+  "scripts": {
+    "dev": "vite --config vite.demo.config.ts",
+    "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --clean",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepack": "npm run check"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/mango-iiif/iiif-search-client.git" },
+  "bugs": { "url": "https://github.com/mango-iiif/iiif-search-client/issues" },
+  "homepage": "https://github.com/mango-iiif/iiif-search-client#readme",
+  "keywords": ["iiif", "search", "content-search", "annotations", "typescript"],
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.4"
+  }
+}

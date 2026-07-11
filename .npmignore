@@ -1,0 +1,8 @@
+src/
+tests/
+demo/
+.github/
+search_client_spec.md
+tsconfig.json
+vitest.config.ts
+vite.demo.config.ts

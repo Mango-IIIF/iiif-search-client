@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>IIIF Search Client Demo</title>
+
+    <style>
+      body {
+        max-width: 720px;
+        margin: 3rem auto;
+        padding: 0 1rem;
+        font: 16px system-ui;
+      }
+
+      label.field {
+        display: block;
+        margin-bottom: 1rem;
+      }
+
+      form {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      input[type='url'],
+      input[type='search'] {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 0.6rem;
+      }
+
+      .autocomplete-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      button {
+        padding: 0.6rem 1rem;
+      }
+
+      .result {
+        padding: 1rem 0;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .meta {
+        color: #666;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>IIIF Search Client Demo</h1>
+
+    <p>
+      Enter a manifest containing a IIIF Content Search 1.0 or 2.0 service.
+    </p>
+
+    <label class="field" for="manifest">
+      Manifest URL
+      <input
+        id="manifest"
+        type="url"
+        value="https://iiif.wellcomecollection.org/presentation/v3/b18035723"
+      >
+    </label>
+
+    <label class="autocomplete-option" for="use-autocomplete">
+      <input id="use-autocomplete" type="checkbox">
+      Use autocomplete suggestions
+    </label>
+
+    <form id="form">
+      <input
+        id="query"
+        type="search"
+        list="suggestions"
+        required
+        autocomplete="off"
+        placeholder="Search term"
+      >
+      <datalist id="suggestions"></datalist>
+      <button type="submit">Search</button>
+    </form>
+
+    <p id="status"></p>
+    <main id="results"></main>
+
+    <script type="module">
+      import { IIIFSearchClient } from '@mango-iiif/iiif-search-client';
+
+      let client;
+      let clientManifestUrl;
+      let autocompleteTimer;
+      let autocompleteRequest = 0;
+
+      const form = document.querySelector('#form');
+      const manifestInput = document.querySelector('#manifest');
+      const queryInput = document.querySelector('#query');
+      const autocompleteInput = document.querySelector('#use-autocomplete');
+      const suggestions = document.querySelector('#suggestions');
+      const status = document.querySelector('#status');
+      const results = document.querySelector('#results');
+
+      const getClient = async () => {
+        const manifestUrl = manifestInput.value;
+
+        if (client && clientManifestUrl === manifestUrl) {
+          return client;
+        }
+
+        const response = await fetch(manifestUrl);
+
+        if (!response.ok) {
+          throw new Error(`Manifest request failed with HTTP ${response.status}`);
+        }
+
+        client = IIIFSearchClient.fromManifest(await response.json());
+        clientManifestUrl = manifestUrl;
+
+        return client;
+      };
+
+      const clearSuggestions = () => {
+        autocompleteRequest += 1;
+        suggestions.replaceChildren();
+      };
+
+      const updateSuggestions = async () => {
+        const query = queryInput.value.trim();
+
+        if (!autocompleteInput.checked || !query) {
+          clearSuggestions();
+          return;
+        }
+
+        const request = ++autocompleteRequest;
+
+        try {
+          const searchClient = await getClient();
+
+          if (!searchClient.hasAutocomplete()) {
+            autocompleteInput.checked = false;
+            clearSuggestions();
+            status.textContent = 'This manifest has no autocomplete service.';
+            return;
+          }
+
+          const matches = await searchClient.autocomplete(query);
+
+          if (request !== autocompleteRequest) {
+            return;
+          }
+
+          suggestions.replaceChildren(
+            ...matches.map((match) => {
+              const option = document.createElement('option');
+              option.value = match.match;
+
+              if (match.label || match.count !== undefined) {
+                option.label = [
+                  match.label,
+                  match.count !== undefined ? `${match.count} matches` : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' — ');
+              }
+
+              return option;
+            }),
+          );
+        } catch (error) {
+          if (request === autocompleteRequest) {
+            clearSuggestions();
+            status.textContent =
+              error instanceof Error ? error.message : String(error);
+          }
+        }
+      };
+
+      const scheduleAutocomplete = () => {
+        window.clearTimeout(autocompleteTimer);
+        autocompleteTimer = window.setTimeout(updateSuggestions, 250);
+      };
+
+      queryInput.addEventListener('input', scheduleAutocomplete);
+
+      autocompleteInput.addEventListener('change', () => {
+        if (autocompleteInput.checked) {
+          scheduleAutocomplete();
+        } else {
+          clearSuggestions();
+        }
+      });
+
+      manifestInput.addEventListener('input', () => {
+        client = undefined;
+        clientManifestUrl = undefined;
+        clearSuggestions();
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        results.replaceChildren();
+        status.textContent = 'Loading…';
+
+        try {
+          const searchClient = await getClient();
+          const response = await searchClient.search({ q: queryInput.value });
+          status.textContent = `${response.total} result(s)`;
+
+          for (const hit of response.hits) {
+            const annotation = hit.annotations[0];
+
+            const item = document.createElement('article');
+            item.className = 'result';
+
+            const title = document.createElement('strong');
+            title.textContent =
+              annotation?.label ?? hit.matchText ?? 'Search Match';
+
+            const text = document.createElement('div');
+            text.textContent = annotation?.text ?? '';
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = annotation?.geometry
+              ? `${annotation.geometry.canvasId} — xywh=${annotation.geometry.x},${annotation.geometry.y},${annotation.geometry.w},${annotation.geometry.h}`
+              : '';
+
+            item.append(title, text, meta);
+            results.append(item);
+          }
+        } catch (error) {
+          status.textContent =
+            error instanceof Error ? error.message : String(error);
+        }
+      });
+    </script>
+  </body>
+</html>
