@@ -60,7 +60,7 @@ npm pack --dry-run
 ## Publishing
 
 1. Update `package.json` to the release version and merge the change.
-2. Create and publish a GitHub Release with a matching `vX.Y.Z` tag.
-3. The release workflow builds and publishes the package to npm with provenance.
+2. Push a matching `vX.Y.Z` tag.
+3. The tag workflow builds, tests, and publishes the package using npm OIDC trusted publishing.
 
-The repository must have an npm automation token configured as the `NPM_TOKEN` GitHub Actions secret. Prerelease GitHub Releases are not published.
+Configure npm trusted publishing for the GitHub repository and the `publish-npm.yml` workflow filename. No npm publishing token is stored in GitHub; npm generates provenance automatically for public packages published from public repositories.
